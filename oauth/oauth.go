@@ -267,11 +267,16 @@ func (t *Transport) RoundTrip(req *http.Request) (*http.Response, error) {
 		}
 	}
 
-	// To set the Authorization header, we must make a copy of the Request
-	// so that we don't modify the Request we were given.
-	// This is required by the specification of http.RoundTripper.
-	req = cloneRequest(req)
-	req.Header.Set("Authorization", "Bearer "+t.AccessToken)
+	// LocalBitcoins doesn't seem to like passing authorization info in the
+	// header. Instead, we'll pass it as a parameter. Watch out, this is pretty
+	// hacky.
+	values := req.URL.Query()
+	values.Set("access_token", t.AccessToken)
+	url, err := req.URL.Parse("?" + values.Encode())
+	if err != nil {
+		panic("Error parsing access token into request URL: " + err.Error())
+	}
+	req.URL = url
 
 	// Make the HTTP request.
 	return t.transport().RoundTrip(req)
